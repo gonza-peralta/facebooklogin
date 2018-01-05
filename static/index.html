@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>Python Flask Starter Application</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="static/stylesheets/style.css">
+    <link rel="stylesheet" href="static/stylesheets/bootstrap-social-gh-pages/bootstrap-social.css">
+    <link rel="stylesheet" href="static/stylesheets/bootstrap-social-gh-pages/assets/css/font-awesome.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="static/libs/String.js" type="text/javascript"></script>
+    <script>
+      var timesfbLoginHandlerFired = 0;
+      function clicklogin() {
+        timesfbLoginHandlerFired = 0;
+      }
+      /*$( document ).ready(function() {
+        if (FB.getUserID() != "") {
+          $("#login").html('span class="fa fa-facebook-official"></span> Iniciar Sesión con Facebook')
+        } else {
+          $("#login").html('span class="fa fa-facebook-official"></span> Salir')
+        }
+      });*/
+      // This is called with the results from from FB.getLoginStatus().
+      function statusChangeCallback(response) {
+        console.log('statusChangeCallback');
+        console.log(response);
+        // The response object is returned with a status field that lets the
+        // app know the current login status of the person.
+        // Full docs on the response object can be found in the documentation
+        // for FB.getLoginStatus().
+        if (response.status === 'connected') {
+          // Logged into your app and Facebook.
+          $("#login").html('<span class="fa fa-facebook-official"></span> Salir')
+          $("#revokeunlink").removeClass("disabled");
+          getPages(response.authResponse.userID,
+            response.authResponse.accessToken);
+        } else {
+          // The person is not logged into your app or we are unable to tell.
+          document.getElementById('status').innerHTML = 'Por favor, loguearse ' +
+            'con las credenciales de Facebook';
+          $("#login").html('<span class="fa fa-facebook-official"></span> Iniciar Sesión con Facebook')
+          $("#revokeunlink").addClass("disabled");
+        }
+      };
+
+      // This function is called when someone finishes with the Login
+      // Button.  See the onlogin handler attached to it in the sample
+      // code below.
+      function checkLoginState() {
+        console.log('checkLoginState');
+        console.log(timesfbLoginHandlerFired);
+        //timesfbLoginHandlerFired++;
+        //if (timesfbLoginHandlerFired <= 1) {
+          var userid = FB.getUserID(),
+            access_token = FB.getAccessToken();
+          // Suscribe each page to expand-feed
+          after_login(userid, access_token);
+          // Then, execute statuschangecallback
+          FB.getLoginStatus(function(response) {
+            statusChangeCallback(response);
+          });
+        //}
+      };
+
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId      : '335637743508702',
+          xfbml      : true,
+          version    : 'v2.11',
+          status     : true,
+          cookie     : true
+        });
+
+        /*if (FB.getUserID() != "") {
+          $("#login").html('<span class="fa fa-facebook-official"></span> Salir')
+          $("#revokeunlink").removeClass("disabled");
+        } else {
+          $("#login").html('<span class="fa fa-facebook-official"></span> Iniciar Sesión con Facebook')
+          $("#revokeunlink").addClass("disabled");
+        }*/
+
+        FB.getLoginStatus(function(response) {
+            console.log('getLoginStatus');
+            statusChangeCallback(response);
+        });
+      };
+
+      // Load the SDK asynchronously
+      (function(d, s, id){
+         var js, fjs = d.getElementsByTagName(s)[0];
+         if (d.getElementById(id)) {return;}
+         js = d.createElement(s); js.id = id;
+         js.src = 'https://connect.facebook.net/es_LA/sdk.js#xfbml=1&version=v2.11';
+         fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+
+      // Here we run a very simple test of the Graph API after login is
+      // successful.  See statusChangeCallback() for when this call is made.
+      function getPages(user_id, user_accessToken) {
+        console.log('Bienvenido! Recuperando tu información.... ');
+        FB.api('/me', function(response) {
+          console.log('Login con éxito para: ' + response.name);
+          document.getElementById('status').innerHTML =
+            'Gracias por loguearte, ' + response.name + '!';
+          reloadtable(user_id, user_accessToken);
+        });
+      };
+
+      function reloadtable(user_id, user_accessToken) {
+        var template =
+              '<tr class="item">'+
+                '<td>{0}</td>'+
+                '<td><span class="pageid">{1}</span></td>'+
+                '<td style="display:none" class="token">{2}</td>'+
+              '</tr>';
+        // Ahora obtengo el listado de paginas del usuario
+        $("#table").empty();
+        $.ajax({
+          url: "https://graph.facebook.com/v2.11/"+user_id+"/accounts?access_token="+user_accessToken,
+          dataType: "json",
+          success: function(pages, textStatus, jqXHR) {
+            console.log("exito");
+            console.log(pages);
+            jQuery.each(pages.data, function(i, val) {
+
+              $("#table").append(String.format(template, val.name, val.id, val.access_token));
+              
+              /*
+              // Obtengo si esta vinculado a la app
+              $.ajax({
+                url: "https://graph.facebook.com/v2.11/"+val.id+"/subscribed_apps?access_token="+val.access_token,
+                dataType: "json",
+                success: function(info, textStatus, jqXHR) {
+                  if (info.data.length <= 0) {
+                    $("#table").append(String.format(template, val.name, val.id, i, 'No', val.access_token));
+                  } else {
+                    $("#table").append(String.format(template, val.name, val.id, i, 'Si', val.access_token));
+                  }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                  console.log("malena imprimiendo");
+                }
+              });
+              */
+            });
+          },
+          error: function (jqXHR, textStatus, errorThrown) {
+            console.log("malena");
+          }
+        });
+      };
+
+      function after_login(userid, access_token) {
+        console.log("After login");
+        // First, get all the available pages
+        $.ajax({
+          context: this,
+          url: "https://graph.facebook.com/v2.11/"+userid+"/accounts?access_token="+access_token,
+          dataType: "json",
+          success: function(pages, textStatus, jqXHR) {
+            console.log("exito");
+            console.log(pages);
+            jQuery.each(pages.data, function(i, val) {
+              $.ajax({
+                type: "POST",
+                url: "/link",
+                dataType: "json",
+                contentType: "application/json",
+                data: JSON.stringify({user_id: userid,
+                       company_token: getUrlParameter("token"),
+                       page_id: val.id,
+                       page_token: val.access_token}),
+                success: function(result, textStatus, jqXHR) {
+                  console.log("exito en post link");
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                  console.log("malena en post link");
+                }
+              });
+            });
+          },
+          error: function (jqXHR, textStatus, errorThrown) {
+            console.log("malena");
+          }
+        });
+      };
+      
+      function revokebypage(pageid, page_token, index) {
+        return $.ajax({
+          type: "DELETE",
+          url: "/unlink",
+          dataType: "json",
+          contentType: "application/json",
+          data: JSON.stringify({
+                 page_id: pageid,
+                 page_token: page_token}),
+          success: function(result, textStatus, jqXHR) {
+            console.log("exito en unlink");
+            //$("#"+index).html("No");
+          },
+          error: function (jqXHR, textStatus, errorThrown) {
+            console.log("malena en unlink");
+          }
+        });
+      };
+
+      function revoke() {
+        var access_token = FB.getAccessToken(),
+          pageid,
+          checked;
+        console.log("revocando");
+        $("tr.item").each(function(index) {
+          $this = $(this);
+          pageid = $this.find("span.pageid").html();
+          checked = $this.find("input.form-check-input").prop("checked");
+          page_token = $this.find("td.token").html();
+          if (checked) {
+            revokebypage(pageid, page_token, index);
+          }
+        });
+        //reloadtable(FB.getUserID(), access_token);
+      };
+
+      function revokeunlink() {
+        var access_token = FB.getAccessToken(),
+          pageid,
+          page_token,
+          deferreds = [];
+        if (access_token) {
+          $("tr.item").each(function(index) {
+            $this = $(this);
+            pageid = $this.find("span.pageid").html();
+            page_token = $this.find("td.token").html();
+            deferreds.push(revokebypage(pageid, page_token, index));
+          });
+          $.when(...deferreds).then(
+            function(response) {
+              console.log("Exito en when");
+              console.log(response);
+              FB.api('/me/permissions/manage_pages', 'delete', function(response) {
+                  console.log(response); // true
+              });
+              $("#table").empty();
+            },
+            function(reason) {
+              console.log("Se cago el when");
+            }
+          );
+        }
+      };
+
+      function loginout() {
+        if (FB.getUserID() != "") {
+          //logout
+          FB.logout(function(response) {
+            // user is now logged out
+            console.log(response); // true
+            $("#login").html('<span class="fa fa-facebook-official"></span> Iniciar Sesión con Facebook')
+            $("#revokeunlink").addClass("disabled");
+          });
+        } else {
+          // login
+          FB.login(function(response){
+            // Handle the response object, like in statusChangeCallback() in our demo
+            // code.
+            console.log("En login obtengo response");
+            console.log(response);
+            $("#login").addClass("disabled");
+            checkLoginState();
+            $("#login").removeClass("disabled");
+            $("#login").html('<span class="fa fa-facebook-official"></span> Salir')
+            $("#revokeunlink").removeClass("disabled");
+          }, {scope: 'public_profile,email,manage_pages'});  
+        }
+      };
+
+      function confirm() {
+        var userid = FB.getUserID(),
+          access_token = FB.getAccessToken(),
+          pageid,
+          checked,
+          page_token;
+        console.log("confirmando");
+        $("tr.item").each(function(index) {
+          $this = $(this);
+          pageid = $this.find("span.pageid").html();
+          checked = $this.find("input.form-check-input").prop("checked");
+          var getsucceed = function(page_info, textStatus, jqXHR) {
+            console.log("exito");
+            page_token = page_info.access_token;
+            $.ajax({
+              type: "POST",
+              url: "/link",
+              dataType: "json",
+              contentType: "application/json",
+              data: JSON.stringify({user_id: userid,
+                     company_token: getUrlParameter("token"),
+                     page_id: pageid,
+                     page_token: page_token}),
+              success: postsucceed,
+              error: function (jqXHR, textStatus, errorThrown) {
+                console.log("malena 2");
+              },
+              async: false
+            });
+          };
+          var postsucceed = function(result, textStatus, jqXHR) {
+            console.log("exito");
+            $("#"+index).html("Si");
+          };
+          if (checked) {
+            $.ajax({
+              type: "GET",
+              url: "https://graph.facebook.com/v2.6/"+pageid+"?fields=access_token&access_token="+access_token,
+              dataType: "json",
+              success: getsucceed,
+              error: function (jqXHR, textStatus, errorThrown) {
+                console.log("malena 1");
+              }
+            });
+          }
+        });
+        //reloadtable(userid, access_token);
+      };
+
+      function getUrlParameter(sParam) {
+          var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+              sURLVariables = sPageURL.split('&'),
+              sParameterName,
+              i;
+
+          for (i = 0; i < sURLVariables.length; i++) {
+              sParameterName = sURLVariables[i].split('=');
+
+              if (sParameterName[0] === sParam) {
+                  return sParameterName[1] === undefined ? true : sParameterName[1];
+              }
+          }
+      };
+
+    </script>
+    <div id="fb-root"></div>
+    <div class="container">
+      <!-- <div class="row" style="width:30%; margin:auto; padding-top:5%"> -->
+      <!--<div class="row" style="width:30%; padding-top:5%">
+        <div class="col"> 
+          <div class="fb-login-button" data-max-rows="1" data-size="large" 
+            data-button-type="login_with" data-show-faces="false" 
+            data-auto-logout-link="true" data-use-continue-as="false"
+            data-scope="public_profile,email,manage_pages" onlogin="checkLoginState();"
+            style="cursor: pointer;">
+          </div>
+        </div>
+      </div> -->
+      <!--<div class="row" style="width:30%; padding-top:5%">
+        <div class="col">
+          <a id="login" class="btn btn-block btn-social btn-facebook" onclick="loginout();">
+            <span class="fa fa-facebook-official"></span> Iniciar Sesión con Facebook
+          </a>
+        </div>
+      </div>-->
+      <div class="row" style="width:30%; padding-top:5%">
+        <div class="col">
+          <button type="button" id="login" class="btn btn-social btn-facebook" 
+            onclick="loginout();" style="padding-left: 10%">
+            <span class="fa fa-facebook-official"></span> Iniciar Sesión con Facebook
+          </button>
+        </div>
+      </div>
+      <!-- <div class="row" style="width:40%; margin:auto; padding-top:5%"> -->
+      <div class="row" style="padding-top:5%">
+        <div class="col-lg-12" style="padding-left: 0;">
+          <div id="status"></div>
+        </div>
+      </div>
+      <!-- <div id="managed_pages" class="row" style="width:60%; margin:auto; padding-top:5%"> -->
+      <div id="managed_pages" class="row" style="width:50%; padding-top:5%">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nombre de Página</th>
+              <th>Identificador</th>
+            </tr>
+          </thead>
+          <tbody id="table">
+          </tbody>
+        </table>
+      </div>
+      <!--<div class="row" style="margin:auto; padding-top:5%">
+        <!--<div class="col-md-4" style="padding-left: 20%;">
+          <button type="button" class="btn btn-info" 
+            style="background-color:#3169AC; border-color:#3169AC" onclick="revoke();">Revocar Permisos sobre Páginas</button>
+        </div>
+        <div class="col-md-4" style="padding-left: 20%;">
+          <button type="button" class="btn btn-info" 
+            style="background-color:#3169AC; border-color:#3169AC" onclick="confirm();">Confirmar Permisos sobre Páginas</button>
+        </div>
+      </div>-->
+      <!-- <div class="row" style="width:35%; margin:auto; padding-top:5%"> -->
+      <div class="row" style="width:35%; padding-top:5%">
+        <div class="col-md-12" style="padding-left: 0;">
+          <button id="revokeunlink" type="button" class="btn btn-info" 
+            style="background-color:#4267b2; border-color:#4267b2; 
+              font-family:Helvetica, Arial, sans-serif;
+              letter-spacing: .25px; overflow: hidden;
+              text-align: center; text-overflow: clip;
+              white-space: nowrap;"; onclick="revokeunlink();">Revocar y Desvincular</button>
+        </div>
+      </div>
+    </div>
+  </body>
+
+</html>
